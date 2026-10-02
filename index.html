@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#245b50">
+<meta name="description" content="YouTube配信者向けの収入・経費・領収書管理アプリ">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<title>配信者の確定申告ノート</title>
+<style>
+:root{--green:#245b50;--green2:#dcece6;--ink:#20312d;--muted:#687771;--line:#dce4df;--bg:#f4f7f5;--card:#fff;--red:#a33b36}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;line-height:1.5;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{background:var(--green);color:#fff;padding:20px 16px 18px}header .eyebrow{font-size:12px;opacity:.8;letter-spacing:.08em}header h1{font-size:21px;margin:4px 0 3px}header p{font-size:13px;margin:0;opacity:.9}
+main{max-width:760px;margin:auto;padding:14px;display:grid;gap:14px}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 5px calc(8px + env(safe-area-inset-bottom))}
+nav button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:5px;display:grid;gap:3px;justify-items:center}nav button b{font-size:19px;font-weight:500}nav button.active{color:var(--green);font-weight:700}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 8px #20312d08}
+.panel h2{font-size:16px;margin:0 0 12px}.sub{font-size:12px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat{background:#f7faf8;border-radius:12px;padding:12px}.stat span{font-size:12px;color:var(--muted);display:block}.stat strong{font-size:20px;display:block;margin-top:3px;overflow-wrap:anywhere}
+label{font-size:13px;font-weight:650;display:block;margin-bottom:5px}input,select,textarea{width:100%;min-width:0;border:1px solid #cbd7d0;border-radius:10px;background:#fff;padding:11px;font:inherit;color:var(--ink)}input[type=file]{padding:9px;font-size:13px}input[type=checkbox]{width:auto}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{min-width:0}.wide{grid-column:1/-1}
+button.primary,button.secondary,button.danger{border:0;border-radius:11px;padding:11px 14px;font:inherit;font-weight:700;cursor:pointer}
+button.primary{background:var(--green);color:white}button.secondary{background:var(--green2);color:var(--green)}button.danger{background:#fbe9e7;color:var(--red)}button:disabled{opacity:.45}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{flex:1}
+.hidden{display:none!important}.item{border-top:1px solid var(--line);padding:12px 0}.item:first-child{border-top:0;padding-top:0}.itemhead{display:flex;gap:10px;justify-content:space-between;align-items:start}.amount{font-weight:800;white-space:nowrap}.pill{font-size:11px;background:var(--green2);color:var(--green);border-radius:20px;padding:3px 8px;display:inline-block}.attachments{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.attachment{border:1px solid var(--line);border-radius:10px;padding:7px;font-size:12px;max-width:100%;overflow-wrap:anywhere}.attachment img{width:68px;height:68px;object-fit:cover;border-radius:6px;display:block;margin-bottom:4px}.empty{padding:20px;text-align:center;color:var(--muted);font-size:13px}.notice{background:#fff7df;border:1px solid #f0dfad;padding:11px;border-radius:10px;font-size:12px;color:#66541e}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:10;background:#20312d;color:#fff;padding:10px 14px;border-radius:12px;display:none;max-width:90%;font-size:13px}
+@media(min-width:620px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}main{padding:20px}.formgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div id="toast" role="status"></div>
+<header><div class="eyebrow">CREATOR TAX NOTE</div><h1>配信者の確定申告ノート</h1><p>収入・経費・領収書を、ひとつにまとめて管理。</p></header>
+<main>
+<section id="dashboard" class="view">
+  <div class="panel">
+    <h2>年間サマリー</h2>
+    <div class="field" style="max-width:180px;margin-bottom:12px"><label for="year">対象年</label><select id="year"></select></div>
+    <div class="stats">
+      <div class="stat"><span>収入合計</span><strong id="incomeTotal">¥0</strong></div>
+      <div class="stat"><span>経費合計</span><strong id="expenseTotal">¥0</strong></div>
+      <div class="stat"><span>差引（参考）</span><strong id="netTotal">¥0</strong></div>
+      <div class="stat"><span>記録件数</span><strong id="countTotal">0件</strong></div>
+    </div>
+    <p class="sub">※税額や申告要否を判定する機能ではありません。</p>
+  </div>
+  <div class="panel"><h2>最近の記録</h2><div id="recentList"></div></div>
+  <div class="panel"><h2>使い方メモ</h2><p class="sub">YouTube広告収益、メンバーシップ、投げ銭、機材、ソフト、ゲーム、配信用素材、通信費などを記録できます。領収書画像・PDFは取引ごとに添付できます。</p><div class="notice">このWebアプリは、データをこの端末・ブラウザ内に保存します。ブラウザのデータ消去や端末故障に備え、定期的にバックアップを保存してください。</div></div>
+</section>
+
+<section id="records" class="view hidden">
+  <div class="panel">
+    <h2 id="formTitle">取引を追加</h2>
+    <form id="recordForm">
+      <input id="recordId" type="hidden">
+      <div class="formgrid">
+        <div class="field"><label for="date">日付 *</label><input id="date" type="date" required></div>
+        <div class="field"><label for="type">区分 *</label><select id="type"><option value="income">収入</option><option value="expense">経費</option></select></div>
+        <div class="field"><label for="amount">金額（円） *</label><input id="amount" type="number" min="0" step="1" inputmode="numeric" required placeholder="例：10000"></div>
+        <div class="field"><label for="category">カテゴリ *</label><select id="category"></select></div>
+        <div class="field wide"><label for="title">内容・取引先 *</label><input id="title" required placeholder="例：YouTube広告収益 / マイク購入"></div>
+        <div class="field wide"><label for="memo">メモ</label><textarea id="memo" rows="2" placeholder="用途、按分メモなど"></textarea></div>
+        <div class="field wide"><label for="files">領収書・請求書（画像 / PDF、複数可）</label><input id="files" type="file" accept="image/*,application/pdf" multiple><div class="sub">画像とPDFを保存します。大きなファイルは端末の空き容量に注意してください。</div><div id="newFilesList" class="attachments"></div></div>
+        <div class="field wide"><label>保存済み添付ファイル</label><div id="savedFilesList" class="attachments"></div></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">保存する</button><button class="secondary" type="button" id="resetBtn">入力をクリア</button></div>
+    </form>
+  </div>
+  <div class="panel"><h2>取引一覧</h2><div class="formgrid" style="margin-bottom:12px"><div><label for="filterType">区分</label><select id="filterType"><option value="all">すべて</option><option value="income">収入</option><option value="expense">経費</option></select></div><div><label for="search">キーワード</label><input id="search" placeholder="内容・カテゴリ"></div></div><div id="recordList"></div></div>
+</section>
+
+<section id="backup" class="view hidden">
+  <div class="panel"><h2>バックアップ・データ移行</h2><p class="sub">記録と添付ファイルをJSONに書き出します。添付ファイルが多いと、バックアップ容量が大きくなります。</p><div class="actions"><button class="primary" id="exportBtn">全データをバックアップ</button><button class="secondary" id="csvBtn">取引をCSV出力</button></div><div style="margin-top:16px"><label for="importFile">JSONバックアップから復元</label><input id="importFile" type="file" accept="application/json,.json"><div class="sub">復元すると現在の記録に追加します。同じIDがある場合は置き換えます。</div><button class="secondary" id="importBtn" style="margin-top:8px;width:100%">バックアップを復元</button></div></div>
+  <div class="panel"><h2>大切な注意</h2><ul class="sub"><li>アプリを別の端末やブラウザで開いても、データは自動同期されません。</li><li>バックアップJSONには添付ファイルの内容も含まれるため、保管先や共有相手に注意してください。</li><li>税務上の必要経費や保存期間は個別事情で異なります。必要に応じて税務署・税理士に確認してください。</li></ul></div>
+</section>
+</main>
+<nav aria-label="メインメニュー"><button class="active" data-view="dashboard"><b>⌂</b>ホーム</button><button data-view="records"><b>＋</b>記録</button><button data-view="backup"><b>⇧</b>バックアップ</button></nav>
+<script>
+const DB_NAME='haishinTaxPwaDB', DB_VERSION=1, STORE='records';
+const $=id=>document.getElementById(id);
+const incomeCats=['広告収益','メンバーシップ','Super Chat・投げ銭','案件・スポンサー','アフィリエイト','その他収入'];
+const expenseCats=['配信機材','ソフト・サービス','ゲーム・配信素材','通信費','電気代','交通費','消耗品','外注費','その他経費'];
+let db, records=[], pendingFiles=[], retainedAttachments=[];
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function tx(mode){return db.transaction(STORE,mode).objectStore(STORE)}
+function allRecords(){return new Promise((resolve,reject)=>{const r=tx('readonly').getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error);});}
+function saveRecord(rec){return new Promise((resolve,reject)=>{const r=tx('readwrite').put(rec);r.onsuccess=resolve;r.onerror=()=>reject(r.error);});}
+function deleteRecord(id){return new Promise((resolve,reject)=>{const r=tx('readwrite').delete(id);r.onsuccess=resolve;r.onerror=()=>reject(r.error);});}
+function money(n){return new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0}).format(Number(n)||0)}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2800)}
+function categories(type,selected){const arr=type==='income'?incomeCats:expenseCats;$('category').innerHTML=arr.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('');}
+function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('hidden',v.id!==name));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='records')renderRecords();if(name==='dashboard')renderDashboard();window.scrollTo(0,0)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+function selectedYear(){return Number($('year').value)||new Date().getFullYear()}
+function yearRecords(){return records.filter(r=>(r.date||'').startsWith(String(selectedYear())))}
+function renderDashboard(){const rs=yearRecords(),inc=rs.filter(r=>r.type==='income').reduce((s,r)=>s+Number(r.amount||0),0),exp=rs.filter(r=>r.type==='expense').reduce((s,r)=>s+Number(r.amount||0),0);$('incomeTotal').textContent=money(inc);$('expenseTotal').textContent=money(exp);$('netTotal').textContent=money(inc-exp);$('countTotal').textContent=rs.length+'件';const recent=[...rs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);$('recentList').innerHTML=recent.length?recent.map(cardHTML).join(''):'<div class="empty">まだ記録がありません。「記録」から追加できます。</div>'}
+function cardHTML(r){return `<div class="item"><div class="itemhead"><div><div><span class="pill">${r.type==='income'?'収入':'経費'}</span> <strong>${esc(r.title)}</strong></div><div class="sub">${esc(r.date)} ・ ${esc(r.category)}</div></div><div class="amount">${r.type==='expense'?'−':'+'}${money(r.amount)}</div></div>${r.memo?`<div class="sub" style="margin-top:5px">${esc(r.memo)}</div>`:''}<div class="sub">${(r.attachments||[]).length}件の添付ファイル</div>${r.id?`<div class="actions"><button class="secondary" onclick="editRecord('${r.id}')">編集</button><button class="danger" onclick="removeRecord('${r.id}')">削除</button></div>`:''}</div>`}
+function renderRecords(){const q=$('search').value.trim().toLowerCase(),f=$('filterType').value;const rs=[...records].sort((a,b)=>b.date.localeCompare(a.date)).filter(r=>(f==='all'||r.type===f)&&(!q||[r.title,r.category,r.memo].join(' ').toLowerCase().includes(q)));$('recordList').innerHTML=rs.length?rs.map(cardHTML).join(''):'<div class="empty">条件に合う記録がありません。</div>'}
+function resetForm(){ $('recordForm').reset();$('recordId').value='';$('date').value=new Date().toISOString().slice(0,10);pendingFiles=[];retainedAttachments=[];$('newFilesList').innerHTML='';$('savedFilesList').innerHTML='';$('formTitle').textContent='取引を追加';categories($('type').value); }
+$('type').onchange=()=>categories($('type').value);
+$('resetBtn').onclick=resetForm;
+$('search').oninput=renderRecords;$('filterType').onchange=renderRecords;$('year').onchange=renderDashboard;
+$('files').onchange=()=>{pendingFiles=[...$('files').files];$('newFilesList').innerHTML=pendingFiles.map((f,i)=>`<div class="attachment">${f.type.startsWith('image/')?'🖼️':'📄'} ${esc(f.name)}<br><span class="sub">${(f.size/1024).toFixed(0)} KB</span></div>`).join('');};
+$('recordForm').onsubmit=async e=>{e.preventDefault();try{const id=$('recordId').value||crypto.randomUUID();const old=records.find(r=>r.id===id);const attachments=[...retainedAttachments];for(const f of pendingFiles){if(!f.type.startsWith('image/')&&f.type!=='application/pdf'){toast('画像またはPDFを選択してください');return;}attachments.push({id:crypto.randomUUID(),name:f.name,type:f.type,size:f.size,data:await fileData(f)});}const rec={id,date:$('date').value,type:$('type').value,amount:Number($('amount').value),category:$('category').value,title:$('title').value.trim(),memo:$('memo').value.trim(),attachments,createdAt:old?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};await saveRecord(rec);await refresh();resetForm();toast('保存しました');showView('records');}catch(err){console.error(err);toast('保存できませんでした。端末の空き容量をご確認ください');}};
+function fileData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.readAsDataURL(file);});}
+window.editRecord=async id=>{const r=records.find(x=>x.id===id);if(!r)return;showView('records');$('recordId').value=r.id;$('date').value=r.date;$('type').value=r.type;categories(r.type,r.category);$('amount').value=r.amount;$('title').value=r.title;$('memo').value=r.memo||'';pendingFiles=[];retainedAttachments=[...(r.attachments||[])];$('files').value='';$('newFilesList').innerHTML='';$('formTitle').textContent='取引を編集';renderAttachmentEditor();window.scrollTo(0,0);};
+function renderAttachmentEditor(){$('savedFilesList').innerHTML=retainedAttachments.map(a=>`<div class="attachment">${a.type?.startsWith('image/')?`<img src="${a.data}" alt="">`:'📄'}<a href="${a.data}" target="_blank" rel="noopener">${esc(a.name)}</a><br><button type="button" class="danger" style="padding:4px 8px;margin-top:5px" onclick="removePendingAttachment('${a.id}')">添付を外す</button></div>`).join('')||'<span class="sub">添付ファイルはありません</span>'}
+window.removePendingAttachment=id=>{retainedAttachments=retainedAttachments.filter(a=>a.id!==id);renderAttachmentEditor()};
+window.removeRecord=async id=>{if(!confirm('この取引と添付ファイルを削除しますか？'))return;await deleteRecord(id);await refresh();toast('削除しました')};
+$('exportBtn').onclick=()=>{const payload={app:'haishin-tax-note-pwa',version:1,exportedAt:new Date().toISOString(),records};downloadBlob(new Blob([JSON.stringify(payload)],{type:'application/json'}),`haishin-tax-backup-${new Date().toISOString().slice(0,10)}.json`);};
+$('csvBtn').onclick=()=>{const rows=[['日付','区分','金額','カテゴリ','内容','メモ','添付ファイル名'],...records.map(r=>[r.date,r.type==='income'?'収入':'経費',r.amount,r.category,r.title,r.memo,(r.attachments||[]).map(a=>a.name).join(' / ')])];const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`haishin-tax-records-${new Date().toISOString().slice(0,10)}.csv`);};
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+$('importBtn').onclick=async()=>{const f=$('importFile').files[0];if(!f){toast('バックアップJSONを選択してください');return;}try{const data=JSON.parse(await f.text());if(!Array.isArray(data.records))throw Error('invalid');for(const r of data.records){if(r.id)await saveRecord(r);}await refresh();toast('バックアップを復元しました');$('importFile').value='';}catch(e){toast('JSONを読み込めませんでした');}};
+async function refresh(){records=await allRecords();renderDashboard();renderRecords();}
+(async()=>{try{db=await openDB();const now=new Date().getFullYear();$('year').innerHTML=Array.from({length:8},(_,i)=>now-5+i).map(y=>`<option value="${y}" ${y===now?'selected':''}>${y}年</option>`).join('');$('date').value=new Date().toISOString().slice(0,10);categories('income');await refresh();if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(console.warn);}catch(e){console.error(e);alert('このブラウザでは保存機能を開始できません。最新のChromeなどで開いてください。')}})();
+</script>
+</body></html>
